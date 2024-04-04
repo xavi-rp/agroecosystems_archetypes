@@ -26,6 +26,8 @@ library(terra)
 library(sf)
 library(data.table)
 library(tidyverse)
+library(ggplot2)
+
 
 
 
@@ -34,6 +36,7 @@ library(tidyverse)
 ## Rega's crop types (Rega et al. 2020)
 
 list.files("/eos/jeodpp/data/projects/REFOCUS/data/BIODIVERSITY/Rega/")
+list.files("/eos/jeodpp/data/projects/REFOCUS/data/BIODIVERSITY/Rega/Energy_input_raw data")
 
 Crop_management_systems_dom50_def <- rast("/eos/jeodpp/data/projects/REFOCUS/data/BIODIVERSITY/Rega/Crop_management_systems_dom50_def.tif")
 Crop_management_systems_dom50_def   # 100m x 100m
@@ -199,10 +202,10 @@ cropSystems[["Intensity"]] <- cropSystems_biogeoregion_tosave$Intensity
 
 writeRaster(cropSystems, filename = "cropSystems_rast.tif", overwrite = TRUE)  
 Sys.time()
-to be checked that it is correctly saved
 
-
-
+#cropSystems <- rast("cropSystems_rast.tif")
+cropSystems
+names(cropSystems)
 
 
 ## Plotting ####
@@ -405,6 +408,151 @@ dev.off()
 
 ## Archetypes against ES variables ####
 
+cropSystems <- rast("cropSystems_rast.tif")  # 100m
+cropSystems
+names(cropSystems)
 
+
+## ES from https://ecosystem-accounts.jrc.ec.europa.eu/data-catalogue/output-data
+
+### Pollination demand ####
+
+ES_pollin_dir <- "/eos/jeodpp/home/users/rotllxa/KIPINCA/CROP_POLLINATION/"
+
+# Description: Demand for pollination expressed as hectare of pollinator-dependent crops per km^2.
+# Spatial data derived from the CAPRI model has been used to quantify the demand.
+
+list.files(ES_pollin_dir)
+list.files(paste0(ES_pollin_dir, "/demand"))
+
+demand_hectare <- rast(paste0(ES_pollin_dir, "/demand", "/demand_hectare.tif"))
+demand_hectare  # bands 1-4 = 2000, 2006, 2012, 2018
+res(demand_hectare)  # 1000 x 1000 m
+terra::minmax(demand_hectare)  # max = 100 ha/km2  (the whole cell is pollinator dependent)
+
+demand_hectare <- demand_hectare[[2]]   # taking 2006 as it's the closest to the base year for the archetypes data (2008)
+demand_hectare
+
+
+## Differences among Crop Systems
+## As this variable is directly calculated as area of the crop system, 
+## it makes no sense to calculate differences among Crop Systems.
+
+Crop_systems_1km_char <- rast("/eos/jeodpp/home/users/rotllxa/Birds_Map_Indicators/crop_systems_from_Rega_1km_char.tif")
+Crop_systems_1km_char
+
+Crop_systems_1km <- rast("/eos/jeodpp/home/users/rotllxa/Birds_Map_Indicators/crop_systems_from_Rega_1km.tif")
+Crop_systems_1km
+
+
+
+## Differences among Intensity classes
+list.files("/eos/jeodpp/data/projects/REFOCUS/data/BIODIVERSITY/Rega")
+list.files("/eos/jeodpp/data/projects/REFOCUS/data/BIODIVERSITY/Rega/Energy_input_raw data")
+Energy_input_2008_fille04_no_labour <- rast("/eos/jeodpp/data/projects/REFOCUS/data/BIODIVERSITY/Rega/Energy_input_raw data/Energy_input_2008_fille04_no_labour.tif")
+Energy_input_2008_fille04_no_labour  # like fig 3A (absolute intensity) but continuous (1km)
+                                     # fig 3A (Absolute_intensity_5_clas_Fig3A): absolute intensity by 5 classes (1km) 
+str(levels(Energy_input_2008_fille04_no_labour))
+plot(Energy_input_2008_fille04_no_labour)
+
+Energy_input_2008_fille04_no_labour_vals <- values(Energy_input_2008_fille04_no_labour)
+str(Energy_input_2008_fille04_no_labour_vals)
+is.matrix(Energy_input_2008_fille04_no_labour_vals)
+range(unique(Energy_input_2008_fille04_no_labour_vals), na.rm = TRUE)   # 43 - 886724
+
+
+
+
+demand_hectare
+Energy_input_2008_fille04_no_labour
+
+# cut
+demand_hectare_1 <- crop(demand_hectare, Energy_input_2008_fille04_no_labour, mask = TRUE)
+plot(demand_hectare)
+plot(demand_hectare_1)
+plot(Energy_input_2008_fille04_no_labour)
+
+
+# scatter plot
+demand_hectare_1_vals <- values(demand_hectare_1)
+str(demand_hectare_1_vals)
+range(demand_hectare_1_vals, na.rm = TRUE)
+
+data2plot <- data.table(Energy_input_2008_fille04_no_labour_vals,
+                        demand_hectare_1_vals)
+
+data2plot
+
+data2plot <- na.omit(data2plot)
+data2plot
+
+R2 <- cor(data2plot)^2
+R2
+
+p <- ggplot(data = data2plot, aes(x = demand_hectare_2, y = Intens_cla)) +
+  geom_point() +
+  geom_smooth(method = "lm", se = FALSE, color = "red", formula = y ~ x) 
+ 
+p  # there is no correlation between Intensity and Pollination Demand
+
+p + ggpubr::stat_cor(label.y = 4e5, label.x = 50)
+
+
+
+# boxplots
+list.files("/eos/jeodpp/data/projects/REFOCUS/data/BIODIVERSITY/Rega/Fig3A-Absolute_intensity_5_clas_.tif")
+
+Absolute_intensity_5_clas_Fig3A <- rast("/eos/jeodpp/data/projects/REFOCUS/data/BIODIVERSITY/Rega/Fig3A-Absolute_intensity_5_clas_.tif/Absolute_intensity_5_clas_Fig3A.tif")
+Absolute_intensity_5_clas_Fig3A 
+plot(Absolute_intensity_5_clas_Fig3A)
+
+Absolute_intensity_5_clas_Fig3A_vals <- values(Absolute_intensity_5_clas_Fig3A)
+unique(Absolute_intensity_5_clas_Fig3A_vals)
+
+data2plot_1 <- data.table(Absolute_intensity_5_clas_Fig3A_vals,
+                          demand_hectare_1_vals)
+
+data2plot_1
+
+data2plot_1 <- na.omit(data2plot_1)
+data2plot_1
+
+p1 <- ggplot(data2plot_1, aes(x = factor(Range_valu), y = demand_hectare_2)) + 
+  geom_boxplot() +
+  labs(y = 'Pollination Demand', x = 'Intensity class (MJ/ha)') +
+  scale_x_discrete("Intensity class (MJ/ha)", labels = c("<= 5000", 
+                                                 "> 5000 - 10000", 
+                                                 "> 10000 - 15000", 
+                                                 "> 15000 - 20000", 
+                                                 "> 20000"))
+p1
+
+png("boxplot_PollinationDemand-IntensityClasses.png")
+p1
+dev.off()
+
+
+#aov <- anova(lm(demand_hectare_2 ~ factor(Range_valu), data = data2plot_1))
+#aov
+
+aov <- lm(demand_hectare_2 ~ factor(Range_valu), data = data2plot_1)
+summary(aov)
+
+data2plot_1 %>%
+  group_by(Range_valu) %>%
+  summarise(mean(demand_hectare_2))
+
+aov <- aov(demand_hectare_2 ~ factor(Range_valu), data = data2plot_1)
+summary(aov)
+aov
+aov$coefficients
+TukeyHSD(aov)
+
+
+
+
+### Crop provision ####
+
+list.files("/eos/jeodpp/home/users/rotllxa/KIPINCA/")
 
 
