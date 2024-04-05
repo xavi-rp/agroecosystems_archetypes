@@ -551,8 +551,132 @@ TukeyHSD(aov)
 
 
 
-### Crop provision ####
+### Crop Provision - Use ####
 
-list.files("/eos/jeodpp/home/users/rotllxa/KIPINCA/")
+list.files("/eos/jeodpp/home/users/rotllxa/KIPINCA/CROP_PROVISION")
+list.files("/eos/jeodpp/home/users/rotllxa/KIPINCA/CROP_PROVISION/use")
+
+# Description:
+# Contribution of ecosystem to crop production expressed by tonnes per km^3.
+# It has been estimated disentangling the ecosystem contribution to crop production for each crop type separately
+# based on CAPRI model data.
+
+use_1000_tonne <- rast("/eos/jeodpp/home/users/rotllxa/KIPINCA/CROP_PROVISION/use/use_1000-tonne.tif")
+
+use_1000_tonne <- use_1000_tonne[[2]]
+use_1000_tonne
 
 
+
+## Differences among Crop Systems
+
+Crop_systems_1km_char <- rast("/eos/jeodpp/home/users/rotllxa/Birds_Map_Indicators/crop_systems_from_Rega_1km_char.tif")
+Crop_systems_1km_char
+
+Crop_systems_1km <- rast("/eos/jeodpp/home/users/rotllxa/Birds_Map_Indicators/crop_systems_from_Rega_1km.tif")
+Crop_systems_1km
+
+
+Crop_systems_1km_vals <- values(Crop_systems_1km)
+unique(Crop_systems_1km_vals)
+nrow(Crop_systems_1km_vals)
+
+
+# cut
+use_1000_tonne_1 <- project(use_1000_tonne, Crop_systems_1km_char)
+use_1000_tonne_1 <- crop(use_1000_tonne_1, Crop_systems_1km_char, mask = TRUE, extend = TRUE)
+use_1000_tonne_1
+
+use_1000_tonne_1_vals <- values(use_1000_tonne_1)
+use_1000_tonne_1_vals
+summary(use_1000_tonne_1_vals)
+sum(!is.na(use_1000_tonne_1_vals))
+sum(is.na(use_1000_tonne_1_vals))
+
+
+data2plot_1 <- data.table(Crop_systems_1km_vals,
+                          use_1000_tonne_1_vals)
+
+data2plot_1
+
+data2plot_1 <- na.omit(data2plot_1)
+data2plot_1
+
+p1 <- ggplot(data2plot_1, aes(x = factor(Crop_systems_num), y = `use_1000-tonne_2`)) + 
+  geom_boxplot() +
+  labs(y = 'Crop Provision - Use (tonnes/km^3)', x = 'Crop System') +
+  scale_x_discrete("Crop System", labels = c("Grasslands_meadows", "Mixed_Prevalence_Arable_Crops", "Mixed_Prevalence_Grasslands", "Mixed_Prevalence_Permanent_Crops",
+                                                         "No_Data", "Specialist_Cereals", "Specialist_Industrial_Crops", "Specialist_Forage",               
+                                                         "Specialist_Fruits_Citrus", "Specialist_Olives", "Specialist_Horticulture", "Specialist_Vineyards"            
+                                                         )) + 
+  theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1))
+
+p1
+
+png("boxplot_CropProvision_Use-CropSystems.png")
+p1
+dev.off()
+
+
+aov <- lm(`use_1000-tonne_2` ~ factor(Crop_systems_num), data = data2plot_1)
+summary(aov)
+
+data2plot_1 %>%
+  group_by(Crop_systems_num) %>%
+  summarise(mean(`use_1000-tonne_2`))
+
+aov <- aov(`use_1000-tonne_2` ~ factor(Crop_systems_num), data = data2plot_1)
+summary(aov)
+aov
+aov$coefficients
+TukeyHSD(aov)
+View(TukeyHSD(aov)$`factor(Crop_systems_num)`)
+
+
+
+## Differences among Intensity classes
+# cut
+use_1000_tonne_1 <- project(use_1000_tonne, Absolute_intensity_5_clas_Fig3A)
+use_1000_tonne_1 <- crop(use_1000_tonne_1, Absolute_intensity_5_clas_Fig3A, mask = TRUE, extend = TRUE)
+use_1000_tonne_1
+
+use_1000_tonne_1_vals <- values(use_1000_tonne_1)
+use_1000_tonne_1_vals
+
+
+data2plot_1 <- data.table(Absolute_intensity_5_clas_Fig3A_vals,
+                          use_1000_tonne_1_vals)
+
+data2plot_1
+
+data2plot_1 <- na.omit(data2plot_1)
+data2plot_1
+
+p1 <- ggplot(data2plot_1, aes(x = factor(Range_valu), y = `use_1000-tonne_2`)) +
+  geom_boxplot() +
+  labs(y = 'Crop Provision - Use (tonnes/km3)', x = 'Intensity class (MJ/ha)') +
+  scale_x_discrete("Intensity class (MJ/ha)", labels = c("<= 5000", 
+                                                         "> 5000 - 10000", 
+                                                         "> 10000 - 15000", 
+                                                         "> 15000 - 20000", 
+                                                         "> 20000"))
+p1
+
+png("boxplot_CropProvision_Use-IntensityClasses.png")
+p1
+dev.off()
+
+
+
+aov <- lm(`use_1000-tonne_2` ~ factor(Range_valu), data = data2plot_1)
+summary(aov)
+
+data2plot_1 %>%
+  group_by(Range_valu) %>%
+  summarise(mean(`use_1000-tonne_2`))
+
+aov <- aov(`use_1000-tonne_2` ~ factor(Range_valu), data = data2plot_1)
+summary(aov)
+aov
+aov$coefficients
+TukeyHSD(aov)
