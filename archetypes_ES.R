@@ -277,3 +277,41 @@ plot(archetypes_CarbonSeq["Crop_system"])
 archetypes_CarbonSeq %>%
   slice_sample(prop = 0.2)
 
+
+
+
+
+
+## Linear model ####
+
+str(data.frame(archetypes_CarbonSeq))
+
+mdl <- lm(Carbon_seq ~ Crop_system * Intensity,
+          data = data.frame(archetypes_CarbonSeq))
+anova(mdl)
+summary(mdl)
+car::qqPlot(resid(mdl))
+hist(resid(mdl))
+hist(data.frame(archetypes_CarbonSeq)$Carbon_seq)
+
+
+#mdl1 <- lm(log10(Carbon_seq) ~ Crop_system * Intensity,
+#          data = data.frame(archetypes_CarbonSeq))
+#car::qqPlot(resid(mdl1))
+#hist(resid(mdl1))
+
+
+#mdl2 <- glm(Carbon_seq ~ Crop_system * Intensity,
+#           data = data.frame(archetypes_CarbonSeq), family = Gamma(link = "identity"))
+#anova(mdl2)
+#summary(mdl2)
+#car::qqPlot(resid(mdl2))
+#hist(resid(mdl2))
+
+emmeans::emmeans(mdl, pairwise ~ Crop_system)
+emmeans::emmeans(mdl, pairwise ~ Crop_system * Intensity)
+#emmeans::emmeans(mdl, ~ Crop_system * Intensity)
+contrsts <- emmeans::emmeans(mdl, pairwise ~ Crop_system * Intensity)
+contrsts
+view(pairs(contrsts, type = "response"))
+plot(contrsts, comparisons = TRUE)
