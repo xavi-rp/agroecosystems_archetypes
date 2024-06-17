@@ -14,7 +14,7 @@ if(Sys.info()[4] == "D01RI1700308") {
   wd <- "/eos/jeodpp/home/users/rotllxa/NRL_agroecosystems/"
   WhereAmI <- "bdap"
 }else if(Sys.info()[4] == "MacBook-MacBook-Pro-de-Xavier.local"){
-  wd <- "/Users/xavi_rp/Documents/D3_NRL/NRL_agroecosystems/"
+  wd <- "/Users/xavi_rp/Documents/D3_iBLUA/"
   WhereAmI <- "mac"
 }else{
   wd <- "C:/Users/rotllxa/NRL_agroecosystems/"
@@ -34,8 +34,12 @@ library(ggplot2)
 ## Rega's crop types (Rega et al. 2020) ####
 
 ## Rega's intensity classes (3)
-Energy_input_2008_fille04_no_labour <- rast(paste0("/eos/jeodpp/data/projects/REFOCUS/data/BIODIVERSITY/Rega/Energy_input_raw data/",
-                                                   "Energy_input_2008_fille04_no_labour.tif"))
+if(WhereAmI == "mac"){
+  Energy_input_2008_fille04_no_labour <- rast(paste0("/Users/xavi_rp/Documents/D5_FFGRCC/Rega/Energy_input_raw data/", "Energy_input_2008_fille04_no_labour.tif"))
+}else{
+  Energy_input_2008_fille04_no_labour <- rast(paste0("/eos/jeodpp/data/projects/REFOCUS/data/BIODIVERSITY/Rega/Energy_input_raw data/",
+                                                     "Energy_input_2008_fille04_no_labour.tif"))
+}
 Energy_input_2008_fille04_no_labour # 1km; 3 intensity classes (1 = low, 2 = medium, 3 = high)
 plot(Energy_input_2008_fille04_no_labour)
 
@@ -57,8 +61,13 @@ unique(attribs[, c("Intens_cla", "Intensity")])
 
 ## Rega's crop types
 
-crop_systems_from_Rega_1km_char <- rast(paste0("/eos/jeodpp/home/users/rotllxa/Birds_Map_Indicators/",
-                                               "crop_systems_from_Rega_1km_char.tif"))
+if(WhereAmI == "mac"){
+  crop_systems_from_Rega_1km_char <- rast(paste0("/Users/xavi_rp/Documents/D5_FFGRCC/Rega/crop_systems_from_Rega/",
+                                                 "crop_systems_from_Rega_1km_char.tif"))
+}else{
+  crop_systems_from_Rega_1km_char <- rast(paste0("/eos/jeodpp/home/users/rotllxa/Birds_Map_Indicators/",
+                                                 "crop_systems_from_Rega_1km_char.tif"))
+}
 crop_systems_from_Rega_1km_char   # crop systems aggregated to 1km
 cats(crop_systems_from_Rega_1km_char)[[1]]
 
@@ -111,14 +120,17 @@ attribs %>%
 
 
 ##  Carbon sequestration - Use ####
-
-list.files("/eos/jeodpp/home/users/rotllxa/KIPINCA/CARBON_SEQUESTRATION/use/")
+if(WhereAmI == "mac"){
+  list.files("/Users/xavi_rp/Documents/D5_FFGRCC/CARBON_SEQUESTRATION/use")
+}else{
+  list.files("/eos/jeodpp/home/users/rotllxa/KIPINCA/CARBON_SEQUESTRATION/use/")
+}
 
 # Description:
 # CO_2 uptake for all ecosystems expressed in tonnes per km^2 based on reported LULUCF statistics.
 # 
 
-carb_seq_use_tonnes <- rast("/eos/jeodpp/home/users/rotllxa/KIPINCA/CARBON_SEQUESTRATION/use/use_tonnes.tif")
+carb_seq_use_tonnes <- rast("/Users/xavi_rp/Documents/D5_FFGRCC/CARBON_SEQUESTRATION/use/use_tonnes.tif")
 
 carb_seq_use_tonnes <- carb_seq_use_tonnes[[2]]  # bands 1-4 = 2000, 2006, 2012, 2018
 carb_seq_use_tonnes
@@ -171,7 +183,7 @@ dev.off()
 
 
 ## NUTS3 regions ####
-library(giscoR)
+  library(giscoR)
 # Gisco maps
 # https://ropengov.github.io/giscoR/
 
@@ -308,10 +320,17 @@ hist(data.frame(archetypes_CarbonSeq)$Carbon_seq)
 #car::qqPlot(resid(mdl2))
 #hist(resid(mdl2))
 
-emmeans::emmeans(mdl, pairwise ~ Crop_system)
-emmeans::emmeans(mdl, pairwise ~ Crop_system * Intensity)
+contrsts_crop <- emmeans::emmeans(mdl, pairwise ~ Crop_system)
+contrsts_crop
+plot(contrsts_crop, comparisons = FALSE)
+
+contrsts_intensity <- emmeans::emmeans(mdl, pairwise ~ Intensity)
+contrsts_intensity
+plot(contrsts_intensity, comparisons = FALSE)
+pairs(contrsts_intensity, type = "response")
+
 #emmeans::emmeans(mdl, ~ Crop_system * Intensity)
 contrsts <- emmeans::emmeans(mdl, pairwise ~ Crop_system * Intensity)
 contrsts
 view(pairs(contrsts, type = "response"))
-plot(contrsts, comparisons = TRUE)
+plot(contrsts, comparisons = FALSE)
