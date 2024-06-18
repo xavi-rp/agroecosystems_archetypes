@@ -110,10 +110,10 @@ attribs %>%
   summarise(Min = min(Value), Max = max(Value)) %>%
   arrange(Max)
 
-# Intensity          Min    Max
-# Low-Intensity       43   8419
-# Medium-Intensity  8420  16137
-# High-Intensity   16138 886724
+# Intensity                      Min      Max
+# (level 1) Low-Intensity         43     8419
+# (level 2) Medium-Intensity    8420    16137
+# (level 3) High-Intensity     16138   886724
 
 
 
@@ -130,7 +130,11 @@ if(WhereAmI == "mac"){
 # CO_2 uptake for all ecosystems expressed in tonnes per km^2 based on reported LULUCF statistics.
 # 
 
-carb_seq_use_tonnes <- rast("/Users/xavi_rp/Documents/D5_FFGRCC/CARBON_SEQUESTRATION/use/use_tonnes.tif")
+if(WhereAmI == "mac"){
+  carb_seq_use_tonnes <- rast("/Users/xavi_rp/Documents/D5_FFGRCC/CARBON_SEQUESTRATION/use/use_tonnes.tif")
+}else{
+  carb_seq_use_tonnes <- rast("/eos/jeodpp/home/users/rotllxa/KIPINCA/CARBON_SEQUESTRATION/use/use_tonnes.tif")
+}
 
 carb_seq_use_tonnes <- carb_seq_use_tonnes[[2]]  # bands 1-4 = 2000, 2006, 2012, 2018
 carb_seq_use_tonnes
@@ -159,7 +163,9 @@ archetypes_CarbonSeq_results <- archetypes_CarbonSeq_dt %>%
   summarize(
     n = n(),
     Min = min(Carbon_seq), Max = max(Carbon_seq), 
-    Mean = mean(Carbon_seq)) # archetypes_CarbonSeq_results %>% View()
+    Mean = mean(Carbon_seq)) # 
+
+View(archetypes_CarbonSeq_results) 
 
 png("Archetypes_Carbon_Sequestration_summary.png", height = 25*nrow(archetypes_CarbonSeq_results), width = 100*ncol(archetypes_CarbonSeq_results))
 gridExtra::grid.table(archetypes_CarbonSeq_results)
@@ -302,6 +308,7 @@ mdl <- lm(Carbon_seq ~ Crop_system * Intensity,
           data = data.frame(archetypes_CarbonSeq))
 anova(mdl)
 summary(mdl)
+coef(mdl)
 car::qqPlot(resid(mdl))
 hist(resid(mdl))
 hist(data.frame(archetypes_CarbonSeq)$Carbon_seq)
@@ -331,6 +338,10 @@ pairs(contrsts_intensity, type = "response")
 
 #emmeans::emmeans(mdl, ~ Crop_system * Intensity)
 contrsts <- emmeans::emmeans(mdl, pairwise ~ Crop_system * Intensity)
-contrsts
-view(pairs(contrsts, type = "response"))
+contrsts  # estimates is directly the change of carbon sequestration from the new archetype 
+          # to the reference (grasslands intensity 1 in the model; from the second to the first in the 
+          # notation of emmeans::emmeans$contrasts)
+          # coeff of crop syst + coeff of intensity + coeff of interaction 
+          # (negative for the emmeans estimates)  
+view(pairs(contrsts, type = "response"))  # to see only estimates (no estimated marginal means)
 plot(contrsts, comparisons = FALSE)
