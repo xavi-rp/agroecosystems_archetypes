@@ -72,13 +72,33 @@ crop_systems_from_Rega_1km_char   # crop systems aggregated to 1km
 cats(crop_systems_from_Rega_1km_char)[[1]]
 
 #plot(crop_systems_from_Rega_1km_char)  # crop systems aggregated to 1km
-ggplot() + tidyterra::geom_spatraster(data = crop_systems_from_Rega_1km_char, aes(fill = code_char)) 
 
+crp_syst <- ggplot() + 
+  tidyterra::geom_spatraster(data = crop_systems_from_Rega_1km_char, aes(fill = code_char)) +
+  viridis::scale_fill_viridis(discrete = TRUE, na.translate = FALSE, name = "Crop system") +
+  labs(title = "Archetypes: crop system component") +
+  theme(plot.title = element_text(hjust = 0.5))
+
+
+jpeg("ArchetypesCropsystemComponent.jpg", width = 20, height = 15, units = "cm", res = 150)
+crp_syst
+dev.off()
 
 ## Merging both -> archetypes (1km, 3 intensity classes)
 Energy_input_2008_fille04_no_labour <- project(Energy_input_2008_fille04_no_labour, crop_systems_from_Rega_1km_char)
 Energy_input_2008_fille04_no_labour
 plot(Energy_input_2008_fille04_no_labour)
+
+intsty <- ggplot() + 
+  tidyterra::geom_spatraster(data = Energy_input_2008_fille04_no_labour, aes(fill = Intens_cla)) +
+  viridis::scale_fill_viridis(discrete = TRUE, na.translate = FALSE, name = "Intensity",
+                              option = "plasma", direction = - 1) +
+  labs(title = "Archetypes: intensity component") +
+  theme(plot.title = element_text(hjust = 0.5))
+
+jpeg("ArchetypesIntensityComponent.jpg", width = 20, height = 15, units = "cm", res = 150)
+intsty
+dev.off()
 
 # concatenating both layers
 #archetypes <- concats(crop_systems_from_Rega_1km_char, Energy_input_2008_fille04_no_labour,
@@ -136,13 +156,49 @@ if(WhereAmI == "mac"){
   carb_seq_use_tonnes <- rast("/eos/jeodpp/home/users/rotllxa/KIPINCA/CARBON_SEQUESTRATION/use/use_tonnes.tif")
 }
 
+
+#carb_seq_use_tonnes_2 <- carb_seq_use_tonnes[[2]]  # bands 1-4 = 2000, 2006, 2012, 2018
+#carb_seq_use_tonnes_3 <- carb_seq_use_tonnes[[3]]  # bands 1-4 = 2000, 2006, 2012, 2018
+#
+#carb_seq_use_tonnes_dif <- carb_seq_use_tonnes_2 - carb_seq_use_tonnes_3
+#carb_seq_use_tonnes_dif <- abs(carb_seq_use_tonnes_2 - carb_seq_use_tonnes_3)
+#summary(values(carb_seq_use_tonnes_dif))
+#summary(abs(values(carb_seq_use_tonnes_dif)))
+#quantile(abs(values(carb_seq_use_tonnes_dif)), seq(0, 1, 0.1), na.rm = TRUE)
+#quantile(abs(values(carb_seq_use_tonnes_dif)), seq(0, 1, 0.05), na.rm = TRUE)
+#mean(abs(values(carb_seq_use_tonnes_dif)), na.rm = TRUE)
+#sd(abs(values(carb_seq_use_tonnes_dif)), na.rm = TRUE)
+#
+#
+#ggplot() + 
+#  tidyterra::geom_spatraster(data = carb_seq_use_tonnes_dif)  +
+#  viridis::scale_fill_viridis(discrete = FALSE,
+#                              option = "turbo", direction = - 1,
+#                              na.value = "transparent")
+#  
+
+
 carb_seq_use_tonnes <- carb_seq_use_tonnes[[2]]  # bands 1-4 = 2000, 2006, 2012, 2018
-carb_seq_use_tonnes
 
 carb_seq_use_tonnes <- project(carb_seq_use_tonnes, archetypes_1)
 plot(archetypes_1[[1]])
 plot(carb_seq_use_tonnes)
 carb_seq_use_tonnes
+
+
+crb_seq <- ggplot() + 
+  tidyterra::geom_spatraster(data = carb_seq_use_tonnes, aes(fill = use_tonnes_2)) +
+  viridis::scale_fill_viridis(discrete = FALSE, name = "Tonnes per km^2",
+                              option = "cividis", direction = - 1,
+                              na.value = "transparent") +
+  labs(title = "Carbon sequestration (INCA)") +
+  theme(plot.title = element_text(hjust = 0.5))
+
+
+jpeg("CarbonSequestrationInca.jpg", width = 20, height = 15, units = "cm", res = 150)
+crb_seq
+dev.off()
+
 
 
 archetypes_CarbonSeq <- archetypes_1
@@ -303,9 +359,10 @@ archetypes_CarbonSeq %>%
 ## Linear model ####
 
 str(data.frame(archetypes_CarbonSeq))
+archetypes_CarbonSeq_dt
 
 mdl <- lm(Carbon_seq ~ Crop_system * Intensity,
-          data = data.frame(archetypes_CarbonSeq))
+          data = archetypes_CarbonSeq_dt)
 anova(mdl)
 summary(mdl)
 coef(mdl)
@@ -327,6 +384,38 @@ hist(data.frame(archetypes_CarbonSeq)$Carbon_seq)
 #car::qqPlot(resid(mdl2))
 #hist(resid(mdl2))
 
+#mdl3 <- lm(Carbon_seq ~ Crop_system + Intensity,
+#           data = data.frame(archetypes_CarbonSeq))
+#summary(mdl3)
+
+
+## Removing Outliers
+
+ggplot(archetypes_CarbonSeq_dt, aes(x = Carbon_seq)) +
+  geom_boxplot() 
+
+# Z-score method
+z_scrs <- as.vector(scale(archetypes_CarbonSeq_dt$Carbon_seq))
+outlrs <- abs(z_scrs) > 3  # Common threshold is 3
+archetypes_CarbonSeq_dt[outlrs, ]
+
+#archetypes_CarbonSeq_dt_backup <- archetypes_CarbonSeq_dt
+archetypes_CarbonSeq_dt <- archetypes_CarbonSeq_dt_backup
+archetypes_CarbonSeq_dt <- archetypes_CarbonSeq_dt[!outlrs, ]
+
+mdl4 <- lm(Carbon_seq ~ Crop_system * Intensity,
+           data = archetypes_CarbonSeq_dt)
+anova(mdl4)
+summary(mdl4)
+smry <- summary(mdl4)
+smry$coefficients
+
+sink("mdl4.txt")
+print(summary(mdl4))
+sink() 
+
+### Computing estimates ####
+
 contrsts_crop <- emmeans::emmeans(mdl, pairwise ~ Crop_system)
 contrsts_crop
 plot(contrsts_crop, comparisons = FALSE)
@@ -344,4 +433,31 @@ contrsts  # estimates is directly the change of carbon sequestration from the ne
           # coeff of crop syst + coeff of intensity + coeff of interaction 
           # (negative for the emmeans estimates)  
 view(pairs(contrsts, type = "response"))  # to see only estimates (no estimated marginal means)
-plot(contrsts, comparisons = FALSE)
+plot(contrsts, comparisons = TRUE)
+
+
+contrasts_estimates <- data.frame(pairs(contrsts, type = "response"))
+write.csv(contrasts_estimates, "Archetypes_Carbon_Sequestration_LModelEstimates.csv", row.names = FALSE)
+
+sink("mdl4_estimates.txt")
+print(contrasts_estimates)
+sink() 
+
+#
+
+
+
+
+
+
+
+# ES: 2006, 2012
+# intensity: 2008 (average of data of 2007, 2008 and 2009)
+# crop system: 2010
+
+
+
+
+
+
+
