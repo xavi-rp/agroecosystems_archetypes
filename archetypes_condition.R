@@ -186,6 +186,41 @@ sd(smry$coefficients[-1, 1])
 
 
 
+## ES vs Condition ####
+
+archetypes_Cond
+
+## ES:
+if(WhereAmI == "mac"){
+  carb_seq_use_tonnes <- rast("/Users/xavi_rp/Documents/D5_FFGRCC/CARBON_SEQUESTRATION/use/use_tonnes.tif")
+}else{
+  carb_seq_use_tonnes <- rast("/eos/jeodpp/home/users/rotllxa/KIPINCA/CARBON_SEQUESTRATION/use/use_tonnes.tif")
+}
 
 
+carb_seq_use_tonnes <- carb_seq_use_tonnes[[2]]  # bands 1-4 = 2000, 2006, 2012, 2018
 
+carb_seq_use_tonnes <- project(carb_seq_use_tonnes, archetypes_Cond)
+
+
+archetypes_Cond$Carbon_seq <- carb_seq_use_tonnes
+archetypes_Cond
+
+
+archetypes_Cond_dt <- data.table(values(archetypes_Cond, dataframe = TRUE), 
+                                 keep.rownames = TRUE)
+archetypes_Cond_dt 
+archetypes_Cond_dt <- na.omit(archetypes_Cond_dt)   # rn is row names (cell number of the original raster)
+archetypes_Cond_dt 
+
+
+## scatter plot with regression
+
+p_I_CS <- ggplot(archetypes_Cond_dt, aes(x = Condition, y = Carbon_seq)) + 
+  geom_point()+
+  geom_smooth(method = lm) +
+  facet_grid(Intensity ~ Crop_system)
+
+jpeg("Archetypes_Condition_ES.jpg", width = 45, height = 20, units = "cm", res = 150)
+p_I_CS
+dev.off()
